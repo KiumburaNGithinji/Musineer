@@ -375,7 +375,23 @@
     <div id="analyzeResult"></div>
   </div>
 
+<script src="config.js"></script>
 <script>
+const API_BASE = (window.MUSINEER_API_BASE || '').replace(/\/$/, '');
+
+function api(path) {
+  return API_BASE + path;
+}
+
+async function readJson(res) {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`Couldn't reach the Musineer backend (got a non-JSON ${res.status} response). Check MUSINEER_API_BASE in config.js.`);
+  }
+}
+
 function errorMessage(data, fallback) {
   if (!data) return fallback;
   if (typeof data.detail === 'string') return data.detail;
@@ -415,7 +431,7 @@ function showToast(message) {
 function renderResult(container, title, files, labelFor) {
   const rows = Object.entries(files)
     .map(([key, filename]) => {
-      const url = `/api/download/${encodeURIComponent(filename)}`;
+      const url = api(`/api/download/${encodeURIComponent(filename)}`);
       return `
         <div class="preview-row">
           <div class="preview-label">
@@ -460,12 +476,12 @@ convertBtn.addEventListener('click', async () => {
   statusEl.textContent = 'Downloading and converting… this can take a bit for long tracks.';
 
   try {
-    const res = await fetch('/api/convert', {
+    const res = await fetch(api('/api/convert'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url, formats }),
     });
-    const data = await res.json();
+    const data = await readJson(res);
 
     if (!res.ok) {
       throw new Error(errorMessage(data, 'Conversion failed.'));
@@ -537,7 +553,7 @@ extractBtn.addEventListener('click', async () => {
     if (extractSource === 'youtube') {
       const url = document.getElementById('extractUrl').value.trim();
       if (!url) throw new Error('Paste a YouTube link first.');
-      res = await fetch('/api/extract', {
+      res = await fetch(api('/api/extract'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url, stems, formats }),
@@ -550,10 +566,10 @@ extractBtn.addEventListener('click', async () => {
       form.append('file', file);
       form.append('stems', stems.join(','));
       form.append('formats', formats.join(','));
-      res = await fetch('/api/extract/upload', { method: 'POST', body: form });
+      res = await fetch(api('/api/extract/upload'), { method: 'POST', body: form });
     }
 
-    const data = await res.json();
+    const data = await readJson(res);
     if (!res.ok) throw new Error(errorMessage(data, 'Extraction failed.'));
 
     extractStatus.textContent = '';
@@ -586,7 +602,7 @@ analyzeBtn.addEventListener('click', async () => {
     if (analyzeSource === 'youtube') {
       const url = document.getElementById('analyzeUrl').value.trim();
       if (!url) throw new Error('Paste a YouTube link first.');
-      res = await fetch('/api/analyze', {
+      res = await fetch(api('/api/analyze'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url }),
@@ -597,10 +613,10 @@ analyzeBtn.addEventListener('click', async () => {
       if (!file) throw new Error('Choose an audio file first.');
       const form = new FormData();
       form.append('file', file);
-      res = await fetch('/api/analyze/upload', { method: 'POST', body: form });
+      res = await fetch(api('/api/analyze/upload'), { method: 'POST', body: form });
     }
 
-    const data = await res.json();
+    const data = await readJson(res);
     if (!res.ok) throw new Error(errorMessage(data, 'Analysis failed.'));
 
     analyzeStatus.textContent = '';

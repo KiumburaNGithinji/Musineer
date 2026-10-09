@@ -1,8 +1,10 @@
+import os
 import re
 import tempfile
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, field_validator
@@ -24,6 +26,17 @@ ALLOWED_UPLOAD_EXTENSIONS = {".mp3", ".wav", ".m4a", ".flac", ".ogg", ".aac"}
 MAX_UPLOAD_BYTES = 200 * 1024 * 1024  # 200 MB
 
 app = FastAPI(title="Musineer Converter")
+
+# Comma-separated origins allowed to call the API from another domain,
+# e.g. the Netlify site: ALLOWED_ORIGINS=https://musineer.netlify.app
+ALLOWED_ORIGINS = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+if ALLOWED_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=ALLOWED_ORIGINS,
+        allow_methods=["GET", "POST"],
+        allow_headers=["*"],
+    )
 
 
 class ConvertRequest(BaseModel):

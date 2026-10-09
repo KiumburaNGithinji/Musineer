@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: musineer-api
+    runtime: docker
+    plan: starter
+    healthCheckPath: /
+    envVars:
+      - key: ALLOWED_ORIGINS
+        sync: false

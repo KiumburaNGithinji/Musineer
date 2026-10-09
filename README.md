@@ -26,6 +26,22 @@ Open http://127.0.0.1:8000, paste a YouTube link, pick MP3/WAV, convert.
 Converted files land in `downloads/` (gitignored) and are also downloadable
 from the browser.
 
+## Deploy (Netlify frontend + Render backend)
+
+Netlify only serves static files, so the Python backend runs on Render and the
+Netlify page calls it directly.
+
+1. **Backend on Render:** New → Blueprint → pick this repo (uses `render.yaml`
+   and the `Dockerfile`). Set `ALLOWED_ORIGINS` to your Netlify URL, e.g.
+   `https://musineer.netlify.app`. Note the service URL Render gives you.
+2. **Point the frontend at it:** set `window.MUSINEER_API_BASE` in
+   `frontend/config.js` to the Render URL (no trailing slash), commit, push.
+3. **Frontend on Netlify:** publish directory `frontend`, no build command.
+
+Stem extraction (Demucs/PyTorch) needs ~2GB+ RAM; the MP3/WAV converter runs
+on a small plan. YouTube may block downloads from cloud IPs ("confirm you're
+not a bot").
+
 ## Notes
 
 - Only use this on content you have the right to download (your own uploads,
