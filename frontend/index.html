@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Musineer — YouTube Converter</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #050a06;
+    --panel: #0d160f;
+    --border: #1e3324;
+    --text: #e6f3ea;
+    --muted: #7fa88f;
+    --accent: #22c55e;
+    --accent-hover: #16a34a;
+    --error: #ff6b6b;
+    --ok: #4ade80;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 16px;
+  }
+  .card {
+    width: 100%;
+    max-width: 520px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px;
+  }
+  .card + .card {
+    margin-top: 20px;
+  }
+  h1 {
+    font-size: 20px;
+    margin: 0 0 4px;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 13px;
+    margin: 0 0 24px;
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  input[type="text"] {
+    width: 100%;
+    padding: 11px 12px;
+    background: #081009;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 14px;
+  }
+  input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  input[type="file"] {
+    width: 100%;
+    padding: 9px 10px;
+    background: #081009;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13px;
+  }
+  .tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .tabs .tab {
+    flex: 1;
+    padding: 8px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .tabs .tab.active {
+    background: var(--accent);
+    color: #04150a;
+    border-color: var(--accent);
+  }
+  .formats {
+    display: flex;
+    gap: 16px;
+    margin: 14px 0 22px;
+  }
+  .formats label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text);
+    font-size: 14px;
+    margin: 0;
+    cursor: pointer;
+  }
+  button {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover:not(:disabled) { background: var(--accent-hover); }
+  button:disabled { opacity: 0.6; cursor: not-allowed; }
+  #status {
+    margin-top: 18px;
+    font-size: 13px;
+    color: var(--muted);
+    min-height: 18px;
+  }
+  #status.error { color: var(--error); }
+  .result {
+    margin-top: 16px;
+    padding: 14px;
+    background: #081009;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .result .title { font-size: 14px; margin-bottom: 12px; color: var(--text); }
+  .preview-row { margin-bottom: 14px; }
+  .preview-row:last-child { margin-bottom: 0; }
+  .preview-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .preview-label a {
+    color: var(--ok);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .preview-label a:hover { text-decoration: underline; }
+  .preview-row audio {
+    width: 100%;
+    height: 32px;
+  }
+  .walk-loader {
+    margin-top: 16px;
+  }
+  .track {
+    position: relative;
+    height: 56px;
+    background: linear-gradient(180deg, rgba(34, 197, 94, 0.08), rgba(34, 197, 94, 0.02));
+    border: 1px solid var(--border);
+    border-bottom: 2px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .turtle {
+    position: absolute;
+    bottom: 6px;
+    left: 0%;
+    width: 54px;
+    height: auto;
+    animation: turtle-walk 7s linear infinite alternate,
+               turtle-waddle 1.1s ease-in-out infinite;
+  }
+  .walk-caption {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+  }
+  @keyframes turtle-walk {
+    0%   { left: 2%; }
+    100% { left: calc(100% - 62px); }
+  }
+  @keyframes turtle-waddle {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-2px) rotate(-2deg); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .turtle { animation: none; }
+  }
+  .toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 340px;
+    background: var(--panel);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 12px 16px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    z-index: 1000;
+    animation: toast-in 0.28s ease-out;
+  }
+  .toast.hide {
+    animation: toast-out 0.25s ease-in forwards;
+  }
+  .toast .check {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    color: var(--accent);
+  }
+  @keyframes toast-in {
+    from { transform: translateY(-12px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes toast-out {
+    from { transform: translateY(0); opacity: 1; }
+    to   { transform: translateY(-12px); opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .toast, .toast.hide { animation: none; }
+  }
+  .stats {
+    display: flex;
+    gap: 12px;
+    margin-top: 2px;
+  }
+  .stat {
+    flex: 1;
+    background: #081009;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    text-align: center;
+  }
+  .stat-label {
+    display: block;
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+  }
+  .stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .confidence-note {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Musineer</h1>
+    <p class="subtitle">Paste a YouTube link, get MP3/WAV for FL Studio.</p>
+
+    <label for="url">YouTube URL</label>
+    <input type="text" id="url" placeholder="https://www.youtube.com/watch?v=...">
+
+    <div class="formats">
+      <label><input type="checkbox" class="convert-format" value="wav" checked> WAV</label>
+      <label><input type="checkbox" class="convert-format" value="mp3" checked> MP3</label>
+    </div>
+
+    <button id="convertBtn">Convert</button>
+    <div id="status"></div>
+    <div id="result"></div>
+  </div>
+
+  <div class="card">
+    <h1>Extract Stems</h1>
+    <p class="subtitle">Pull vocals or instrumental from a YouTube link or your own audio file.</p>
+
+    <div class="tabs">
+      <button type="button" class="tab extract-tab active" data-source="youtube">YouTube link</button>
+      <button type="button" class="tab extract-tab" data-source="upload">Upload file</button>
+    </div>
+
+    <div id="extractYoutube">
+      <label for="extractUrl">YouTube URL</label>
+      <input type="text" id="extractUrl" placeholder="https://www.youtube.com/watch?v=...">
+    </div>
+
+    <div id="extractUpload" style="display:none;">
+      <label for="extractFile">Audio file</label>
+      <input type="file" id="extractFile" accept=".mp3,.wav,.m4a,.flac,.ogg,.aac">
+    </div>
+
+    <div class="formats">
+      <label><input type="checkbox" class="stem" value="vocals" checked> Vocals</label>
+      <label><input type="checkbox" class="stem" value="instrumental" checked> Instrumental</label>
+    </div>
+    <div class="formats">
+      <label><input type="checkbox" class="extract-format" value="wav" checked> WAV</label>
+      <label><input type="checkbox" class="extract-format" value="mp3" checked> MP3</label>
+    </div>
+
+    <button id="extractBtn">Extract</button>
+    <div id="extractStatus"></div>
+    <div id="extractLoader" class="walk-loader" style="display:none;">
+      <div class="track">
+        <svg class="turtle" viewBox="0 -6 150 96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <g fill="none" stroke="var(--text)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="30" cy="76" rx="9" ry="7" />
+            <ellipse cx="54" cy="78" rx="9" ry="7" />
+            <ellipse cx="80" cy="78" rx="9" ry="7" />
+            <ellipse cx="100" cy="74" rx="8" ry="6" />
+            <path d="M14,42 C14,20 36,10 60,10 C86,10 106,22 106,44 C106,60 86,68 60,68 C36,68 14,60 14,42 Z" />
+            <path d="M42,12 L50,68 M72,10 L66,68 M18,32 L106,32 M18,52 L106,50" />
+            <path d="M102,40 C110,36 114,32 118,28" />
+            <circle cx="124" cy="26" r="14" />
+            <path d="M117,29 Q124,33 131,28" />
+          </g>
+          <g fill="var(--text)" stroke="none">
+            <circle cx="119" cy="22" r="1.6" />
+            <circle cx="128" cy="21" r="1.6" />
+          </g>
+          <g fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round">
+            <path d="M108,16 C114,2 134,2 140,16" />
+          </g>
+          <g fill="var(--accent)" stroke="var(--accent-hover)" stroke-width="1.5">
+            <circle cx="108" cy="20" r="6" />
+            <circle cx="140" cy="20" r="6" />
+          </g>
+        </svg>
+      </div>
+      <div class="walk-caption">Separating stems… this can take a couple minutes.</div>
+    </div>
+    <div id="extractResult"></div>
+  </div>
+
+  <div class="card">
+    <h1>BPM &amp; Key</h1>
+    <p class="subtitle">Find the tempo and musical key of a track before you sample it.</p>
+
+    <div class="tabs">
+      <button type="button" class="tab analyze-tab active" data-source="youtube">YouTube link</button>
+      <button type="button" class="tab analyze-tab" data-source="upload">Upload file</button>
+    </div>
+
+    <div id="analyzeYoutube">
+      <label for="analyzeUrl">YouTube URL</label>
+      <input type="text" id="analyzeUrl" placeholder="https://www.youtube.com/watch?v=...">
+    </div>
+
+    <div id="analyzeUpload" style="display:none;">
+      <label for="analyzeFile">Audio file</label>
+      <input type="file" id="analyzeFile" accept=".mp3,.wav,.m4a,.flac,.ogg,.aac">
+    </div>
+
+    <button id="analyzeBtn" style="margin-top: 14px;">Analyze</button>
+    <div id="analyzeStatus"></div>
+    <div id="analyzeResult"></div>
+  </div>
+
+<script>
+function errorMessage(data, fallback) {
+  if (!data) return fallback;
+  if (typeof data.detail === 'string') return data.detail;
+  if (Array.isArray(data.detail)) {
+    return data.detail.map(d => d.msg || JSON.stringify(d)).join('; ');
+  }
+  return fallback;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function showToast(message) {
+  const existing = document.getElementById('toast');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.id = 'toast';
+  toast.className = 'toast';
+  toast.innerHTML = `
+    <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"></circle>
+      <path d="M8 12.5l2.5 2.5L16 9"></path>
+    </svg>
+    <span>${message}</span>`;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add('hide');
+    toast.addEventListener('animationend', () => toast.remove(), { once: true });
+  }, 3200);
+}
+
+function renderResult(container, title, files, labelFor) {
+  const rows = Object.entries(files)
+    .map(([key, filename]) => {
+      const url = `/api/download/${encodeURIComponent(filename)}`;
+      return `
+        <div class="preview-row">
+          <div class="preview-label">
+            <span>${labelFor(key)}</span>
+            <a href="${url}" download>Download</a>
+          </div>
+          <audio controls preload="none" src="${url}"></audio>
+        </div>`;
+    })
+    .join('');
+  container.innerHTML = `
+    <div class="result">
+      <div class="title">${escapeHtml(title || 'Untitled')}</div>
+      ${rows}
+    </div>`;
+}
+
+const urlInput = document.getElementById('url');
+const convertBtn = document.getElementById('convertBtn');
+const statusEl = document.getElementById('status');
+const resultEl = document.getElementById('result');
+
+convertBtn.addEventListener('click', async () => {
+  const url = urlInput.value.trim();
+  const formats = Array.from(document.querySelectorAll('.convert-format:checked')).map(cb => cb.value);
+
+  resultEl.innerHTML = '';
+  statusEl.classList.remove('error');
+
+  if (!url) {
+    statusEl.textContent = 'Paste a YouTube link first.';
+    statusEl.classList.add('error');
+    return;
+  }
+  if (formats.length === 0) {
+    statusEl.textContent = 'Pick at least one format.';
+    statusEl.classList.add('error');
+    return;
+  }
+
+  convertBtn.disabled = true;
+  statusEl.textContent = 'Downloading and converting… this can take a bit for long tracks.';
+
+  try {
+    const res = await fetch('/api/convert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, formats }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(errorMessage(data, 'Conversion failed.'));
+    }
+
+    statusEl.textContent = '';
+    showToast(`Conversion complete — ${escapeHtml(data.title || 'your track')} is ready`);
+    renderResult(resultEl, data.title, data.files, fmt => fmt.toUpperCase());
+  } catch (err) {
+    statusEl.textContent = err.message;
+    statusEl.classList.add('error');
+  } finally {
+    convertBtn.disabled = false;
+  }
+});
+
+function setupTabs(tabClass, youtubeSectionId, uploadSectionId, onChange) {
+  const tabs = document.querySelectorAll('.' + tabClass);
+  const youtubeSection = document.getElementById(youtubeSectionId);
+  const uploadSection = document.getElementById(uploadSectionId);
+  let source = 'youtube';
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      source = tab.dataset.source;
+      youtubeSection.style.display = source === 'youtube' ? 'block' : 'none';
+      uploadSection.style.display = source === 'upload' ? 'block' : 'none';
+      onChange(source);
+    });
+  });
+
+  return { get source() { return source; } };
+}
+
+const extractTabs = setupTabs('extract-tab', 'extractYoutube', 'extractUpload', s => { extractSource = s; });
+let extractSource = extractTabs.source;
+
+const extractBtn = document.getElementById('extractBtn');
+const extractStatus = document.getElementById('extractStatus');
+const extractResult = document.getElementById('extractResult');
+const extractLoader = document.getElementById('extractLoader');
+
+extractBtn.addEventListener('click', async () => {
+  const stems = Array.from(document.querySelectorAll('.stem:checked')).map(cb => cb.value);
+  const formats = Array.from(document.querySelectorAll('.extract-format:checked')).map(cb => cb.value);
+
+  extractResult.innerHTML = '';
+  extractStatus.classList.remove('error');
+
+  if (stems.length === 0) {
+    extractStatus.textContent = 'Pick at least one: vocals or instrumental.';
+    extractStatus.classList.add('error');
+    return;
+  }
+  if (formats.length === 0) {
+    extractStatus.textContent = 'Pick at least one format.';
+    extractStatus.classList.add('error');
+    return;
+  }
+
+  extractBtn.disabled = true;
+  extractStatus.textContent = '';
+  extractLoader.style.display = 'block';
+
+  try {
+    let res;
+    if (extractSource === 'youtube') {
+      const url = document.getElementById('extractUrl').value.trim();
+      if (!url) throw new Error('Paste a YouTube link first.');
+      res = await fetch('/api/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, stems, formats }),
+      });
+    } else {
+      const fileInput = document.getElementById('extractFile');
+      const file = fileInput.files[0];
+      if (!file) throw new Error('Choose an audio file first.');
+      const form = new FormData();
+      form.append('file', file);
+      form.append('stems', stems.join(','));
+      form.append('formats', formats.join(','));
+      res = await fetch('/api/extract/upload', { method: 'POST', body: form });
+    }
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(errorMessage(data, 'Extraction failed.'));
+
+    extractStatus.textContent = '';
+    showToast(`Stems extracted — ${escapeHtml(data.title || 'your track')} is ready`);
+    renderResult(extractResult, data.title, data.files, key => key.replace('_', ' ').toUpperCase());
+  } catch (err) {
+    extractStatus.textContent = err.message;
+    extractStatus.classList.add('error');
+  } finally {
+    extractBtn.disabled = false;
+    extractLoader.style.display = 'none';
+  }
+});
+
+const analyzeTabs = setupTabs('analyze-tab', 'analyzeYoutube', 'analyzeUpload', s => { analyzeSource = s; });
+let analyzeSource = analyzeTabs.source;
+
+const analyzeBtn = document.getElementById('analyzeBtn');
+const analyzeStatus = document.getElementById('analyzeStatus');
+const analyzeResult = document.getElementById('analyzeResult');
+
+analyzeBtn.addEventListener('click', async () => {
+  analyzeResult.innerHTML = '';
+  analyzeStatus.classList.remove('error');
+  analyzeBtn.disabled = true;
+  analyzeStatus.textContent = 'Analyzing…';
+
+  try {
+    let res;
+    if (analyzeSource === 'youtube') {
+      const url = document.getElementById('analyzeUrl').value.trim();
+      if (!url) throw new Error('Paste a YouTube link first.');
+      res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+    } else {
+      const fileInput = document.getElementById('analyzeFile');
+      const file = fileInput.files[0];
+      if (!file) throw new Error('Choose an audio file first.');
+      const form = new FormData();
+      form.append('file', file);
+      res = await fetch('/api/analyze/upload', { method: 'POST', body: form });
+    }
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(errorMessage(data, 'Analysis failed.'));
+
+    analyzeStatus.textContent = '';
+    showToast(`Analysis complete — ${escapeHtml(data.title || 'your track')}`);
+    analyzeResult.innerHTML = `
+      <div class="result">
+        <div class="title">${escapeHtml(data.title || 'Untitled')}</div>
+        <div class="stats">
+          <div class="stat">
+            <span class="stat-label">BPM</span>
+            <span class="stat-value">${data.bpm}</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Key</span>
+            <span class="stat-value">${escapeHtml(data.key)}</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Camelot</span>
+            <span class="stat-value">${escapeHtml(data.camelot || '—')}</span>
+          </div>
+        </div>
+        <div class="confidence-note">Key confidence: ${Math.round(data.confidence * 100)}% — treat as a starting point, not gospel.</div>
+      </div>`;
+  } catch (err) {
+    analyzeStatus.textContent = err.message;
+    analyzeStatus.classList.add('error');
+  } finally {
+    analyzeBtn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
